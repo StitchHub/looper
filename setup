@@ -1,0 +1,113 @@
+#
+# Here's a guide to get the looper to work on a GNU/Linux system.
+# It explains everything you need to install and configure.
+# This is for Debian users. If you come from another distro, you can read on,
+# but don't copy-paste !
+#
+# All this stuff was written quite a while ago, 2014, maybe before.
+# Things might be outdated.
+#
+
+
+
+# ---- Pd Vanilla ---- #
+
+# Install from official debian repository
+apt-get install puredata puredata-import
+
+# For pduino, more stuff is needed
+apt-get install pd-cyclone pd-mapping pd-comport #pd-pdstring
+
+# Furthermore, we need PDString from moocow. Careful when building, the configure is tricky.
+wget http://www.ling.uni-potsdam.de/~moocow/projects/pd/pdstring-0.10-2.tar.gz
+tar -xzf pdstring-0.10-2.tar.gz
+cd pdstring-0.10-2
+./configure --enable-object-externals && make && sudo make install
+
+# Some config
+echo 'flags: -rt -jack -r 96000' >> ~/.pdsettings
+
+
+
+# ---- Pd Extended ---- #
+
+# Install pd-extended from puredata repositories
+# http://puredata.info/docs/faq/debian
+echo 'deb http://apt.puredata.info/releases sid main' > /etc/apt/sources.list.d/pd-extended.list
+apt-key adv --keyserver keyserver.ubuntu.com --recv-key 9f0fe587374bbe81
+apt-key adv --keyserver keyserver.ubuntu.com --recv-key D63D3D09C39F5EEB
+apt-get update
+apt-get install pd-extended
+
+# Some config
+# See http://en.flossmanuals.net/pure-data/ch011_advanced-configuration/
+
+
+
+# ---- Pd Extended - Compilation (what's that for ?) ---- #
+
+# Install required dependencies. See:
+# http://puredata.info/docs/developer/Debian
+# Also ensure that libjack-jackd2-dev is installed
+# Then...
+cd pd-extended/packages/linux_make
+make install
+
+
+
+# ---- Pduino ---- #
+
+# Download latest Pduino:
+# - official: http://at.or.at/hans/pd/objects.html
+# - fork, more compatible with puredata on linux: https://github.com/reduzent/pduino
+git clone https://github.com/reduzent/pduino.git
+
+# Create a directory for externals
+sudo mkdir /usr/local/lib/pd/
+
+# Install
+sudo mkdir /usr/local/lib/pd/pduino
+sudo install -m 644 *.pd /usr/local/lib/pd/pduino/
+echo 'path1: /usr/local/lib/pd/pduino' >> ~/.pdsettings
+
+# Add yourself to dialout group, cause we need access to a serial device
+sudo adduser <username> dialout
+
+
+
+# ---- Arduino SDK ---- #
+
+# Install
+# There are some packages available that we DON'T want to install:
+# - arduino-mk - provides a shitty Makefile, doesn't work.
+# - arduino    - brings in a whole JAVA IDE.
+# So we install only the core libraries.
+apt-get install arduino-core
+
+# Get the last Makefile, and read it for up-to-date information
+wget http://ed.am/dev/make/arduino-mk/arduino.mk
+
+# Show available boards - our board is Duemilanove w/ ATmega168, aka 'diecimila'
+make -f arduino.mk boards
+
+# Create our own Makefile
+echo 'BOARD=diecimila
+
+include arduino.mk' > Makefile
+
+# Compile and flash
+make
+make upload
+
+
+
+# ---- Emacs mode for ino files ---- #
+
+# http://www.emacswiki.org/emacs/ArduinoSupport
+wget https://github.com/bookest/arduino-mode/raw/master/arduino-mode.el
+mv arduino-mode.el ~/.emacs.d/modes/
+echo '
+;; Arduino mode
+(autoload 'arduino-mode "arduino-mode" "Arduino mode" t)
+(setq auto-mode-alist (append '(("\\.ino$" . arduino-mode)) auto-mode-alist))
+' >> ~/.emacs.d/init.el

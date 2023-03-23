@@ -1,0 +1,70 @@
+--- a/externals/tof/src/folderpanel.c	2014-02-28 23:47:15.327414949 +0100
++++ b/externals/tof/src/folderpanel.c	2014-03-15 17:34:51.004504892 +0100
+@@ -3,23 +3,23 @@
+ #include "m_pd.h"
+ //#include "g_canvas.h"
+ 
+-// tk_chooseDirectory
+-/*
+-
+-proc pdtk_folderpanel {target localdir} {
+-    if {$localdir == ""} {
+-    	set filename [tk_getSaveFile]
+-    } else {
+-    	set filename [tk_getSaveFile -initialdir $localdir]
+-    }
+-    if {$filename != ""} {
+-        pd [concat $target callback [enquote_path $filename] \;]
+-    }
+-}
+-
+-
+-*/
+-
++/* Based on pdtk_savepanel.
++ * $::env(PWD) can be replaced by $::env(HOME) if you prefer.
++ */
++#define TOF_FOLDERPANEL "\
++proc tof_folderpanel {target localdir} {\n\
++    if {! [file isdirectory $localdir]} {\n\
++        set localdir $::env(PWD)\n\
++    }\n\
++    set foldername [tk_chooseDirectory -initialdir $localdir]\n\
++    if {$foldername ne \"\"} {\n\
++        if {! [file isdirectory $foldername]} {\n\
++            file mkdir $foldername\n\
++        }\n\
++        pdsend \"$target callback [enquote_path $foldername]\"\n\
++    }\n\
++}\n\
++"
+ 
+ 
+ 
+@@ -35,7 +35,7 @@ typedef struct _folderpanel
+ static void folderpanel_symbol(t_folderpanel *x, t_symbol *s)
+ {
+     char *path = (s && s->s_name) ? s->s_name : "\"\"";
+-    sys_vgui("after idle [list after 100 tof_folderpanel %s]\n", x->x_s->s_name);
++    sys_vgui("tof_folderpanel {%s} {%s}\n", x->x_s->s_name, path);
+ }
+ 
+ static void folderpanel_bang(t_folderpanel *x)
+@@ -74,16 +74,7 @@ void folderpanel_setup(void)
+     class_addmethod(folderpanel_class, (t_method)folderpanel_callback,
+         gensym("callback"), A_SYMBOL, 0);
+ 
+-   
+-	sys_gui("proc tof_folderpanel {target} {\n");
+-	sys_gui("  set path [tk_chooseDirectory] \n");
+-	sys_gui(" if {$path != \"\"} {\n");
+-	sys_gui("  pdsend \"$target callback [enquote_path $path]\"\n");
+-	sys_gui(" }\n");
+-	sys_gui("}\n");
+-
+-
+-
++    sys_gui(TOF_FOLDERPANEL);
+ }
+ 
+ 
